@@ -118,8 +118,12 @@ class Contact:
             phi_vec[4 * i: 4 * i + 4] = con_phi_list[i]
             jac_mat[4 * i: 4 * i + 4] = con_jac_list[i]
 
+        # Reorder from MuJoCo qvel order to MPC qvel order
+        # MuJoCo qvel: palm_linear_vel(3), palm_angular_vel(3), finger_qvel(16), obj_vel(6)
+        # MPC qvel: obj_vel(6), palm_vel(6), finger_qvel(16)
         jac_mat_reorder = np.zeros((self.param_.max_ncon_ * 4, self.param_.n_qvel_))
-        jac_mat_reorder[:, 0:6] = jac_mat[:, -6:]
-        jac_mat_reorder[:, 6:] = jac_mat[:, 0:16]
+        jac_mat_reorder[:, 0:6] = jac_mat[:, -6:]      # object velocity (linear + angular)
+        jac_mat_reorder[:, 6:12] = jac_mat[:, 0:6]     # palm velocity (linear + angular)
+        jac_mat_reorder[:, 12:] = jac_mat[:, 6:22]     # finger velocities
 
         return phi_vec, jac_mat_reorder

@@ -56,19 +56,42 @@ class MjSimulator():
             self.break_out_signal_ = True
 
     def reset_env(self):
-        self.data_.qpos[:] = np.hstack((self.param_.init_robot_qpos_, self.param_.init_obj_qpos_))
-        self.data_.qvel[:] = np.zeros(22)
+        # MuJoCo qpos order: palm_pos(3), palm_euler(3), fingers(16), object(7)
+        self.data_.qpos[:] = np.hstack((self.param_.init_palm_qpos_, self.param_.init_robot_qpos_, self.param_.init_obj_qpos_))
+        self.data_.qvel[:] = np.zeros(self.param_.n_qvel_)
 
         mujoco.mj_forward(self.model_, self.data_)
 
     def step(self, jpos_cmd):
-        curr_jpos = self.get_jpos()
-        target_jpos = (curr_jpos + jpos_cmd)
+        # Command is [palm_cmd(6), finger_pos_cmd(16)]
+        # palm_cmd = [pos_delta(3), euler_delta(3)] - position deltas like fingers
+        palm_cmd = jpos_cmd[0:6]
+        finger_pos_cmd = jpos_cmd[6:]
+
+        # Compute target palm pose
+        if self.param_.optimize_palm_:
+            # Get current palm pose (MuJoCo uses Euler angles)
+            curr_palm_pos = self.data_.qpos[0:3].copy()
+            curr_palm_euler = self.data_.qpos[3:6].copy()  # [roll, pitch, yaw]
+
+            # Add position deltas (same as fingers)
+            target_palm_pos = curr_palm_pos + palm_cmd[0:3]
+            target_palm_euler = curr_palm_euler + palm_cmd[3:6]
+        else:
+            target_palm_pos = self.param_.init_palm_qpos_[0:3]
+            target_palm_euler = self.param_.init_palm_qpos_[3:6]
+
+        curr_finger_pos = self.get_jpos()
+        target_finger_pos = curr_finger_pos + finger_pos_cmd
+
+        # Combine into full control vector
+        # MuJoCo control order: palm_pos(3), palm_euler(3), fingers(16)
+        target_ctrl = np.hstack((target_palm_pos, target_palm_euler, target_finger_pos))
+
         for i in range(self.param_.frame_skip_):
-            self.data_.ctrl = target_jpos
+            self.data_.ctrl = target_ctrl
             mujoco.mj_step(self.model_, self.data_)
             self.viewer_.sync()
-            # print('error = ', np.linalg.norm(target_jpos - self.get_jpos()))
 
     def reset_fingers_qpos(self):
         for iter in range(self.param_.frame_skip_):
@@ -78,12 +101,23 @@ class MjSimulator():
             self.viewer_.sync()
 
     def get_state(self):
-        obj_pos = self.data_.qpos.flatten().copy()[-7:]
-        robot_pos = self.data_.qpos.flatten().copy()[0:16]
-        return np.concatenate((obj_pos, robot_pos))
+        # MuJoCo qpos order: palm_pos(3), palm_euler(3), fingers(16), object(7)
+        # Return order for MPC: object(7), palm_pose(7) [pos(3)+quat(4)], fingers(16)
+        palm_pos = self.data_.qpos.flatten().copy()[0:3]
+        finger_pos = self.data_.qpos.flatten().copy()[6:22]
+        obj_pose = self.data_.qpos.flatten().copy()[22:29]
+
+        # Get palm orientation from body quaternion (world frame), not from Euler angles
+        # The Euler angles in qpos are in the palm's LOCAL frame, not world frame
+        palm_body_id = mujoco.mj_name2id(self.model_, mujoco.mjtObj.mjOBJ_BODY, 'palm')
+        palm_quat = self.data_.xquat[palm_body_id].copy()  # [w, x, y, z] in world frame
+        palm_pose = np.concatenate((palm_pos, palm_quat))
+
+        return np.concatenate((obj_pose, palm_pose, finger_pos))
 
     def get_jpos(self):
-        return self.data_.qpos.flatten().copy()[0:16]
+        # Return only finger positions (skip palm pose)
+        return self.data_.qpos.flatten().copy()[6:22]
 
     def get_fingertips_position(self):
         fts_pos = []
@@ -105,43 +139,49 @@ class MjSimulator():
     # forward kinematics of allegro hand
     def allegro_fd_fn(self):
 
-        t_palm = rot.quattmat_fn(np.array([0, 1, 0, 1]) / np.linalg.norm([0, 1, 0, 1]))
+        # NOTE: palm_quat from get_state() already includes the base rotation from MuJoCo XML
+        # (quat="0 1 0 1" = 90° rotation about Y-axis), so we do NOT apply t_palm_base here
+
+        # palm pose: [pos(3), quat(4)]
+        palm_pose = cs.SX.sym('palm_pose', 7)
+        palm_pos = palm_pose[0:3]
+        palm_quat = palm_pose[3:7]
 
         # first finger
         ff_qpos = cs.SX.sym('ff_qpos', 4)
-        ff_t_base = t_palm @ rot.ttmat_fn([0, 0.0435, -0.001542]) @ rot.quattmat_fn([0.999048, -0.0436194, 0, 0])
+        ff_t_base = rot.ttmat_fn(palm_pos) @ rot.quattmat_fn(palm_quat) @ rot.ttmat_fn([0, 0.0435, -0.001542]) @ rot.quattmat_fn([0.999048, -0.0436194, 0, 0])
         ff_t_proximal = ff_t_base @ rot.rztmat_fn(ff_qpos[0]) @ rot.ttmat_fn([0, 0, 0.0164])
         ff_t_medial = ff_t_proximal @ rot.rytmat_fn(ff_qpos[1]) @ rot.ttmat_fn([0, 0, 0.054])
         ff_t_distal = ff_t_medial @ rot.rytmat_fn(ff_qpos[2]) @ rot.ttmat_fn([0, 0, 0.0384])
         ff_t_ftp = ff_t_distal @ rot.rytmat_fn(ff_qpos[3]) @ rot.ttmat_fn([0, 0, 0.0384])
-        self.fftp_pos_fd_fn = cs.Function('ff_t_ftp_fn', [ff_qpos], [ff_t_ftp[0:3, -1]])
+        self.fftp_pos_fd_fn = cs.Function('ff_t_ftp_fn', [palm_pose, ff_qpos], [ff_t_ftp[0:3, -1]])
 
         # middle finger
         mf_qpos = cs.SX.sym('mf_qpos', 4)
-        mf_t_base = t_palm @ rot.ttmat_fn([0, 0, 0.0007])
+        mf_t_base = rot.ttmat_fn(palm_pos) @ rot.quattmat_fn(palm_quat) @ rot.ttmat_fn([0, 0, 0.0007])
         mf_t_proximal = mf_t_base @ rot.rztmat_fn(mf_qpos[0]) @ rot.ttmat_fn([0, 0, 0.0164])
         mf_t_medial = mf_t_proximal @ rot.rytmat_fn(mf_qpos[1]) @ rot.ttmat_fn([0, 0, 0.054])
         mf_t_distal = mf_t_medial @ rot.rytmat_fn(mf_qpos[2]) @ rot.ttmat_fn([0, 0, 0.0384])
         mf_t_ftp = mf_t_distal @ rot.rytmat_fn(mf_qpos[3]) @ rot.ttmat_fn([0, 0, 0.0384])
-        self.mftp_pos_fd_fn = cs.Function('mftp_pos_fd_fn', [mf_qpos], [mf_t_ftp[0:3, -1]])
+        self.mftp_pos_fd_fn = cs.Function('mftp_pos_fd_fn', [palm_pose, mf_qpos], [mf_t_ftp[0:3, -1]])
 
         # ring finger
         rf_qpos = cs.SX.sym('rf_qpos', 4)
-        rf_t_base = t_palm @ rot.ttmat_fn([0, -0.0435, -0.001542]) @ rot.quattmat_fn([0.999048, 0.0436194, 0, 0])
+        rf_t_base = rot.ttmat_fn(palm_pos) @ rot.quattmat_fn(palm_quat) @ rot.ttmat_fn([0, -0.0435, -0.001542]) @ rot.quattmat_fn([0.999048, 0.0436194, 0, 0])
         rf_t_proximal = rf_t_base @ rot.rztmat_fn(rf_qpos[0]) @ rot.ttmat_fn([0, 0, 0.0164])
         rf_t_medial = rf_t_proximal @ rot.rytmat_fn(rf_qpos[1]) @ rot.ttmat_fn([0, 0, 0.054])
         rf_t_distal = rf_t_medial @ rot.rytmat_fn(rf_qpos[2]) @ rot.ttmat_fn([0, 0, 0.0384])
         rf_t_ftp = rf_t_distal @ rot.rytmat_fn(rf_qpos[3]) @ rot.ttmat_fn([0, 0, 0.0384])
-        self.rftp_pos_fd_fn = cs.Function('rftp_pos_fd_fn', [rf_qpos], [rf_t_ftp[0:3, -1]])
+        self.rftp_pos_fd_fn = cs.Function('rftp_pos_fd_fn', [palm_pose, rf_qpos], [rf_t_ftp[0:3, -1]])
 
         # Thumb
         th_qpos = cs.SX.sym('th_qpos', 4)
-        th_t_base = t_palm @ rot.ttmat_fn([-0.0182, 0.019333, -0.045987]) @ rot.quattmat_fn(
+        th_t_base = rot.ttmat_fn(palm_pos) @ rot.quattmat_fn(palm_quat) @ rot.ttmat_fn([-0.0182, 0.019333, -0.045987]) @ rot.quattmat_fn(
             [0.477714, -0.521334, -0.521334, -0.477714])
         th_t_proximal = th_t_base @ rot.rxtmat_fn(-th_qpos[0]) @ rot.ttmat_fn([-0.027, 0.005, 0.0399])
         th_t_medial = th_t_proximal @ rot.rztmat_fn(th_qpos[1]) @ rot.ttmat_fn([0, 0, 0.0177])
         th_t_distal = th_t_medial @ rot.rytmat_fn(th_qpos[2]) @ rot.ttmat_fn([0, 0, 0.0514])
         th_t_ftp = th_t_distal @ rot.rytmat_fn(th_qpos[3]) @ rot.ttmat_fn([0, 0, 0.054])
-        self.thtp_pos_fd_fn = cs.Function('thtp_pos_fd_fn', [th_qpos], [th_t_ftp[0:3, -1]])
+        self.thtp_pos_fd_fn = cs.Function('thtp_pos_fd_fn', [palm_pose, th_qpos], [th_t_ftp[0:3, -1]])
 
         return 0

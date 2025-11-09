@@ -22,7 +22,7 @@ trial_num = 20
 success_pos_threshold = 0.02
 success_quat_threshold = 0.04
 consecutive_success_time_threshold = 20
-max_rollout_length = 500
+max_rollout_length = 200
 
 trial_count = 0
 while trial_count < trial_num:
@@ -88,7 +88,9 @@ while trial_count < trial_num:
             #        success check
             # -----------------------
             curr_q = env.get_state()
-            if (metrics.comp_quat_error(curr_q[3:7], param.target_q_) < success_quat_threshold):
+            pos_error = np.linalg.norm(curr_q[0:3] - param.target_p_)
+            quat_error = metrics.comp_quat_error(curr_q[3:7], param.target_q_)
+            if quat_error < success_quat_threshold and pos_error < success_pos_threshold:
                 consecutive_success_time = consecutive_success_time + 1
             else:
                 consecutive_success_time = 0

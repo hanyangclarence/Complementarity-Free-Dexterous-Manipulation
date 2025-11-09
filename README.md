@@ -1,5 +1,11 @@
 # [Complementarity-Free Dexterous Manipulation](https://arxiv.org/abs/2408.07855)
 
+# Setup
+```
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+export PYTHONPATH="${PYTHONPATH}:/home/hanyang/code/humanoid/Complementarity-Free-Dexterous-Manipulation"
+export MESA_D3D12_DEFAULT_ADAPTER_NAME="NVIDIA"
+```
 
 > ### This code project is an implementation of the paper 
 > - **Complementarity-Free Multi-Contact Modeling and Optimization for Dexterous Manipulation**

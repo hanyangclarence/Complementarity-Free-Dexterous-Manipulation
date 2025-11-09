@@ -25,10 +25,9 @@
     <geom name="floor" pos="0 0 -0.1" size="0 0 0.05" type="plane" material="groundplane"/>
 
     <body name="goal" pos="-0.1 -0.00 0.2">
+        <!-- Goal visualization cube at exact target position (semi-transparent magenta) -->
         <geom name="goal_geom" size="0.025 0.025 0.025" material="obj_material" type="box" conaffinity="0" contype="0"
-        pos="0 0 0"  rgba="1 0  1 0.0"/>
-      <geom name="goal-visual-above" size="0.025 0.025 0.025" material="obj_material" type="box" conaffinity="0" contype="0"
-        pos="0 0 0.15"  rgba="1 0  1 0.7"/>
+        pos="0 0 0"  rgba="1 0 1 0.5"/>
     </body>
     
     <body name="obj" pos="0.0 0.0 0.025">

@@ -27,13 +27,18 @@ class ExplicitModel:
         # -------------------------------
         #    state integration fn
         # -------------------------------
+        # State order: obj_pos(3), obj_quat(4), palm_pos(3), palm_quat(4), finger_qpos(16)
+        # Velocity order: obj_vel(6), palm_vel(6), finger_qvel(16)
         qvel = cs.SX.sym('qvel', self.param_.n_qvel_)
         qpos = cs.SX.sym('qpos', self.param_.n_qpos_)
+
         next_obj_pos = qpos[0:3] + self.param_.h_ * qvel[0:3]
-        next_robot_qpos = qpos[-(self.param_.n_robot_qpos_):] + self.param_.h_ * qvel[-(self.param_.n_robot_qpos_):]
         next_obj_quat = (qpos[3:7] + 0.5 * self.param_.h_ * self.cs_qmat_body_fn_(qpos[3:7]) @ qvel[3:6])
-        # next_obj_quat = next_obj_quat / cs.norm_2(next_obj_quat)
-        next_qpos = cs.vertcat(next_obj_pos, next_obj_quat, next_robot_qpos)
+        next_palm_pos = qpos[7:10] + self.param_.h_ * qvel[6:9]
+        next_palm_quat = (qpos[10:14] + 0.5 * self.param_.h_ * self.cs_qmat_body_fn_(qpos[10:14]) @ qvel[9:12])
+        next_robot_qpos = qpos[14:] + self.param_.h_ * qvel[12:]
+
+        next_qpos = cs.vertcat(next_obj_pos, next_obj_quat, next_palm_pos, next_palm_quat, next_robot_qpos)
         self.cs_qposInteg_ = cs.Function('cs_qposInte', [qpos, qvel], [next_qpos])
 
     def init_model(self):
@@ -43,9 +48,15 @@ class ExplicitModel:
         jac_mat = cs.SX.sym('jac_mat', self.param_.max_ncon_ * 4, self.param_.n_qvel_)
 
         # b vector in the QP formulation
+        # Command order: palm_delta(6) [pos_delta(3) + euler_delta(3)], finger_delta(16)
+        # NOTE: Commands are POSITION DELTAS, treated same as finger joint deltas
+        palm_cmd = cmd[0:6]  # palm position and Euler angle deltas
+        finger_cmd = cmd[6:]  # finger joint angle deltas
+
         b_o = cs.DM(self.param_.obj_mass_ * self.param_.gravity_)
-        b_r = self.param_.robot_stiff_ @ cmd
-        b = cs.vertcat(b_o, b_r)
+        b_palm = self.param_.palm_stiff_ @ palm_cmd
+        b_r = self.param_.robot_stiff_ @ finger_cmd
+        b = cs.vertcat(b_o, b_palm, b_r)
 
         # Q matrix in the QP formulation
         Q = self.param_.Q
@@ -70,6 +81,11 @@ class ExplicitModel:
 
         # combine the velocity
         v = v_non_contact + v_contact
+
+        # If palm is not being optimized, zero out palm velocity to enforce fixed palm
+        if not self.param_.optimize_palm_:
+            # Palm velocity (linear + angular) is at indices 6:12 in qvel
+            v = cs.vertcat(v[0:6], cs.DM.zeros(6), v[12:])
 
         # time integration
         next_qpos = self.cs_qposInteg_(curr_q, v)
