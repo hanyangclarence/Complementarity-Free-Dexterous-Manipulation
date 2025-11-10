@@ -103,7 +103,7 @@ class MjSimulator():
     def get_state(self):
         # MuJoCo qpos order: palm_pos(3), palm_euler(3), fingers(16), object(7)
         # Return order for MPC: object(7), palm_pose(7) [pos(3)+quat(4)], fingers(16)
-        palm_pos = self.data_.qpos.flatten().copy()[0:3]
+        palm_pos = self.data_.qpos.flatten().copy()[0:3]  # Joint space position
         finger_pos = self.data_.qpos.flatten().copy()[6:22]
         obj_pose = self.data_.qpos.flatten().copy()[22:29]
 
@@ -133,6 +133,66 @@ class MjSimulator():
         if goal_quat is not None:
             self.model_.body('goal').quat = goal_quat
             # self.model_.geom_quat[goal_id] = goal_quat
+        mujoco.mj_forward(self.model_, self.data_)
+        pass
+
+    def set_target_hand_pose(self, target_palm_pos=None, target_palm_quat=None, target_finger_qpos=None):
+        """
+        Set the target hand pose visualization in the viewer.
+
+        Args:
+            target_palm_pos: target palm position in qpos (local/joint) coordinates (3,)
+            target_palm_quat: target palm quaternion (4,) [w, x, y, z] in world frame
+            target_finger_qpos: target finger joint positions (16,)
+        """
+        if target_palm_pos is not None and target_palm_quat is not None:
+            try:
+                # Convert qpos (local) position to world coordinates for ALL visualization
+                # Correct transform verified by comparing qpos vs xpos:
+                # world = [qpos_z, -qpos_y, qpos_x]
+                target_palm_pos_world = np.array([
+                    target_palm_pos[2],   # world_x = qpos_z
+                    -target_palm_pos[1],  # world_y = -qpos_y
+                    target_palm_pos[0]    # world_z = qpos_x
+                ])
+
+                self.model_.body('target_palm').pos = target_palm_pos_world
+                self.model_.body('target_palm').quat = target_palm_quat
+            except KeyError:
+                # target_palm body doesn't exist in this XML, skip
+                pass
+
+        # Compute and set target fingertip positions using forward kinematics
+        if target_finger_qpos is not None and target_palm_pos is not None and target_palm_quat is not None:
+            # FK expects palm_pose in world coordinates for consistency
+            target_palm_pos_world = np.array([
+                target_palm_pos[2],   # world_x = qpos_z
+                -target_palm_pos[1],  # world_y = -qpos_y
+                target_palm_pos[0]    # world_z = qpos_x
+            ])
+            target_palm_pose = np.hstack([target_palm_pos_world, target_palm_quat])
+
+            # Compute target fingertip positions
+            try:
+                ff_qpos = target_finger_qpos[0:4]
+                mf_qpos = target_finger_qpos[4:8]
+                rf_qpos = target_finger_qpos[8:12]
+                th_qpos = target_finger_qpos[12:16]
+
+                target_fftip_pos = np.array(self.fftp_pos_fd_fn(target_palm_pose, ff_qpos)).flatten()
+                target_mftip_pos = np.array(self.mftp_pos_fd_fn(target_palm_pose, mf_qpos)).flatten()
+                target_rftip_pos = np.array(self.rftp_pos_fd_fn(target_palm_pose, rf_qpos)).flatten()
+                target_thtip_pos = np.array(self.thtp_pos_fd_fn(target_palm_pose, th_qpos)).flatten()
+
+                # Set fingertip visualization positions
+                self.model_.body('target_fftip').pos = target_fftip_pos
+                self.model_.body('target_mftip').pos = target_mftip_pos
+                self.model_.body('target_rftip').pos = target_rftip_pos
+                self.model_.body('target_thtip').pos = target_thtip_pos
+            except KeyError:
+                # target fingertip bodies don't exist in this XML, skip
+                pass
+
         mujoco.mj_forward(self.model_, self.data_)
         pass
 

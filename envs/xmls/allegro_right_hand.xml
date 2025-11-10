@@ -130,9 +130,9 @@
       <joint name="palm_ty" type="slide" axis="0 1 0" damping="10" range="-0.3 0.3"/>
       <joint name="palm_tz" type="slide" axis="0 0 1" damping="10" range="-0.1 0.5"/>
       <!-- Palm rotation joints (3 separate hinge joints for roll, pitch, yaw) -->
-      <joint name="palm_rx" type="hinge" axis="1 0 0" damping="10" range="-1.57 1.57"/>
-      <joint name="palm_ry" type="hinge" axis="0 1 0" damping="10" range="-1.57 1.57"/>
-      <joint name="palm_rz" type="hinge" axis="0 0 1" damping="10" range="-1.57 1.57"/>
+      <joint name="palm_rx" type="hinge" axis="1 0 0" damping="10"/>
+      <joint name="palm_ry" type="hinge" axis="0 1 0" damping="10"/>
+      <joint name="palm_rz" type="hinge" axis="0 0 1" damping="10"/>
       <!-- <inertial mass="0.4154" pos="0 0 0.0475" diaginertia="1e-4 1e-4 1e-4"/> -->
       <geom class="palm_visual" mesh="base_link"/>
       <geom class="palm_collision" name="palm" friction="0.5"/>
@@ -258,9 +258,9 @@
     <position name="palm_y" joint="palm_ty" ctrlrange="-0.3 0.3" kp="10000"/>
     <position name="palm_z" joint="palm_tz" ctrlrange="-0.1 0.5" kp="10000"/>
     <!-- Palm rotation actuators (3 separate position controls for roll, pitch, yaw) -->
-    <position name="palm_rotx" joint="palm_rx" ctrlrange="-1.57 1.57" kp="100"/>
-    <position name="palm_roty" joint="palm_ry" ctrlrange="-1.57 1.57" kp="100"/>
-    <position name="palm_rotz" joint="palm_rz" ctrlrange="-1.57 1.57" kp="100"/>
+    <position name="palm_rotx" joint="palm_rx" kp="100"/>
+    <position name="palm_roty" joint="palm_ry" kp="100"/>
+    <position name="palm_rotz" joint="palm_rz" kp="100"/>
 
     <position name="ffa0" joint="ffj0" class="base" kp="1"/>
     <position name="ffa1" joint="ffj1" class="proximal" kp="1"/>
