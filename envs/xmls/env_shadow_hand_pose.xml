@@ -1,0 +1,77 @@
+<mujoco model="shadow_hand scene">
+  <include file="shadow_hand_right.xml"/>
+
+  <statistic center="0 0 0" extent="0.3"/>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <quality shadowsize="8192"/>
+    <global azimuth="130" elevation="-40" offwidth="1280" offheight="960"/>
+  </visual>
+
+  <asset>
+    <texture name='cube_surface' file="../assets/textures/iris_block.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
+    <material name="obj_material" texture="cube_surface" specular="5" shininess=".0"/>
+
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0."/>
+  </asset>
+
+  <worldbody>
+    <light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8"  castshadow="false" pos="0 1 4" dir="0 0 -1" name="light0"/>
+    <camera name="demo-cam" pos="-0.003 -0.393 0.317" xyaxes="1.000 -0.000 0.000 0.000 0.462 0.887"/>
+
+    <geom name="floor" pos="0 0 -0.1" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Cube object (not the target, just in the scene) -->
+    <body name="obj" pos="0.0 0.0 0.015">
+        <freejoint name="cube_table"/>
+        <geom name="obj" type="box" mass="0.1" material="obj_material" size="0.015 0.015 0.015"
+              quat="1 0 0 0" friction="0.5" rgba="1.0 1.0 0 0.99"
+              />
+    </body>
+
+    <!-- Target cube visualization (optional, kept for consistency) -->
+    <body name="goal" pos="-0.1 -0.00 0.2">
+        <geom name="goal_geom" size="0.015 0.015 0.015" material="obj_material" type="box" conaffinity="0" contype="0"
+        pos="0 0 0"  rgba="1 0 1 0.5"/>
+    </body>
+
+    <!-- Target palm pose visualization -->
+    <body name="target_palm" pos="0.0 0.0 0.0" quat="1 0 0 0">
+        <!-- Semi-transparent box representing target palm -->
+        <geom name="target_palm_box" type="box" size="0.03 0.015 0.045" pos="0 0 0.04"
+              conaffinity="0" contype="0" rgba="0 1 0 0.3"/>
+        <!-- Coordinate frame axes for target palm orientation -->
+        <geom name="target_palm_x" type="cylinder" size="0.001" fromto="0 0 0 0.03 0 0"
+              conaffinity="0" contype="0" rgba="1 0 0 0.7"/>
+        <geom name="target_palm_y" type="cylinder" size="0.001" fromto="0 0 0 0 0.03 0"
+              conaffinity="0" contype="0" rgba="0 1 0 0.7"/>
+        <geom name="target_palm_z" type="cylinder" size="0.001" fromto="0 0 0 0 0 0.03"
+              conaffinity="0" contype="0" rgba="0 0 1 0.7"/>
+    </body>
+
+    <!-- Target fingertip positions (5 spheres for Shadow hand) -->
+    <body name="target_fftip" pos="0.0 0.0 0.1">
+        <geom name="target_fftip_geom" type="sphere" size="0.008"
+              conaffinity="0" contype="0" rgba="1 0.5 0 0.6"/>
+    </body>
+    <body name="target_mftip" pos="0.0 0.0 0.1">
+        <geom name="target_mftip_geom" type="sphere" size="0.008"
+              conaffinity="0" contype="0" rgba="1 0.5 0 0.6"/>
+    </body>
+    <body name="target_rftip" pos="0.0 0.0 0.1">
+        <geom name="target_rftip_geom" type="sphere" size="0.008"
+              conaffinity="0" contype="0" rgba="1 0.5 0 0.6"/>
+    </body>
+    <body name="target_lftip" pos="0.0 0.0 0.1">
+        <geom name="target_lftip_geom" type="sphere" size="0.008"
+              conaffinity="0" contype="0" rgba="1 0.5 0 0.6"/>
+    </body>
+    <body name="target_thtip" pos="0.0 0.0 0.1">
+        <geom name="target_thtip_geom" type="sphere" size="0.008"
+              conaffinity="0" contype="0" rgba="1 0.5 0 0.6"/>
+    </body>
+  </worldbody>
+</mujoco>
