@@ -41,7 +41,7 @@ class ExplicitMPCParams:
             # Little finger (LF): 5 joints
             0.0, 0.0, 0.0, 0.0, 0.0,
             # Thumb (TH): 5 joints
-            0.0, 1.5, 1.0, 0.0, 0.0
+            0.0, 0.0, 0.0, 0.0, 0.0
         ])
 
         # palm optimization flag (set to False for stable baseline behavior)

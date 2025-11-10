@@ -149,7 +149,7 @@ class HandPoseMPCParams:
 
         # Control bounds: palm_delta(6) [pos_delta(3), euler_delta(3)] + finger_delta(22)
         palm_linear_u_bound = 0.002  # ±2mm position delta per step
-        palm_angular_u_bound = 0.02  # ±0.02 rad per step
+        palm_angular_u_bound = 0.005  # ±0.005 rad per step
         palm_u_lb = np.hstack([-palm_linear_u_bound * np.ones(3), -palm_angular_u_bound * np.ones(3)])
         palm_u_ub = np.hstack([palm_linear_u_bound * np.ones(3), palm_angular_u_bound * np.ones(3)])
 

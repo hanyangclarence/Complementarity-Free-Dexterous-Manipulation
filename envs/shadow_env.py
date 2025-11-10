@@ -108,7 +108,8 @@ class MjSimulator():
         obj_pose = self.data_.qpos.flatten().copy()[28:35]
 
         # Get palm orientation from body quaternion (world frame), not from Euler angles
-        # The Euler angles in qpos are in the palm's LOCAL frame, not world frame
+        # qpos[3:6] contains EXTRINSIC XYZ Euler angles (palm_rx, palm_ry, palm_rz are HINGE joints)
+        # These compose as fixed-axis rotations in world frame, but we need the final quaternion
         palm_body_id = mujoco.mj_name2id(self.model_, mujoco.mjtObj.mjOBJ_BODY, 'palm')
         palm_quat = self.data_.xquat[palm_body_id].copy()  # [w, x, y, z] in world frame
         palm_pose = np.concatenate((palm_pos, palm_quat))

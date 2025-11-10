@@ -242,34 +242,34 @@
 
     <!-- First finger actuators (4 joints) -->
     <position name="ffa0" joint="ffj3" class="knuckle_joint" kp="1"/>
-    <position name="ffa1" joint="ffj2" class="proximal_joint" kp="1"/>
-    <position name="ffa2" joint="ffj1" class="middle_joint" kp="1"/>
+    <position name="ffa1" joint="ffj2" class="proximal_joint" kp="10"/>
+    <position name="ffa2" joint="ffj1" class="middle_joint" kp="3"/>
     <position name="ffa3" joint="ffj0" class="distal_joint" kp="1"/>
 
     <!-- Middle finger actuators (4 joints) -->
     <position name="mfa0" joint="mfj3" class="knuckle_joint" kp="1"/>
-    <position name="mfa1" joint="mfj2" class="proximal_joint" kp="1"/>
-    <position name="mfa2" joint="mfj1" class="middle_joint" kp="1"/>
+    <position name="mfa1" joint="mfj2" class="proximal_joint" kp="10"/>
+    <position name="mfa2" joint="mfj1" class="middle_joint" kp="3"/>
     <position name="mfa3" joint="mfj0" class="distal_joint" kp="1"/>
 
     <!-- Ring finger actuators (4 joints) -->
     <position name="rfa0" joint="rfj3" class="knuckle_joint" kp="1"/>
-    <position name="rfa1" joint="rfj2" class="proximal_joint" kp="1"/>
-    <position name="rfa2" joint="rfj1" class="middle_joint" kp="1"/>
+    <position name="rfa1" joint="rfj2" class="proximal_joint" kp="10"/>
+    <position name="rfa2" joint="rfj1" class="middle_joint" kp="3"/>
     <position name="rfa3" joint="rfj0" class="distal_joint" kp="1"/>
 
     <!-- Little finger actuators (5 joints) -->
-    <position name="lfa0" joint="lfj4" class="lf_metacarpal_joint" kp="1"/>
+    <position name="lfa0" joint="lfj4" class="lf_metacarpal_joint" kp="10"/>
     <position name="lfa1" joint="lfj3" class="knuckle_joint" kp="1"/>
-    <position name="lfa2" joint="lfj2" class="proximal_joint" kp="1"/>
-    <position name="lfa3" joint="lfj1" class="middle_joint" kp="1"/>
+    <position name="lfa2" joint="lfj2" class="proximal_joint" kp="10"/>
+    <position name="lfa3" joint="lfj1" class="middle_joint" kp="3"/>
     <position name="lfa4" joint="lfj0" class="distal_joint" kp="1"/>
 
     <!-- Thumb actuators (5 joints) -->
     <position name="tha0" joint="thj4" class="thumb_base1" kp="1"/>
-    <position name="tha1" joint="thj3" class="thumb_base2" kp="1"/>
-    <position name="tha2" joint="thj2" class="thumb_mid1" kp="1"/>
-    <position name="tha3" joint="thj1" class="thumb_mid2" kp="1"/>
+    <position name="tha1" joint="thj3" class="thumb_base2" kp="10"/>
+    <position name="tha2" joint="thj2" class="thumb_mid1" kp="3"/>
+    <position name="tha3" joint="thj1" class="thumb_mid2" kp="3"/>
     <position name="tha4" joint="thj0" class="thumb_distal" kp="1"/>
   </actuator>
 
