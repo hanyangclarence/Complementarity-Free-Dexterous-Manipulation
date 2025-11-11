@@ -119,25 +119,25 @@ class ExplicitMPCParams:
         # Control bounds: palm_delta(6) [pos_delta(3), euler_delta(3)] + finger_delta(22)
         # NOTE: Commands are POSITION DELTAS, not velocities (like fingers)
         if self.optimize_palm_:
-            palm_linear_u_bound = 0.001  # ±1mm position delta per step
-            palm_angular_u_bound = 0.01  # ±0.01 rad ≈ 0.57 degrees per step
+            palm_linear_u_bound = 0.001  # ±2mm position delta per step
+            palm_angular_u_bound = 0.001  # ±0.005 rad per step
             palm_u_lb = np.hstack([-palm_linear_u_bound * np.ones(3), -palm_angular_u_bound * np.ones(3)])
             palm_u_ub = np.hstack([palm_linear_u_bound * np.ones(3), palm_angular_u_bound * np.ones(3)])
         else:
             palm_u_lb = np.zeros(6)  # Zero palm command when not optimizing (fixed palm)
             palm_u_ub = np.zeros(6)
-        finger_u_bound = 0.2  # ±0.2 rad position delta per step for fingers
+        finger_u_bound = 0.05  # ±0.05 rad position delta per step for fingers
         self.mpc_u_lb_ = np.hstack([palm_u_lb, -finger_u_bound * np.ones(22)])
         self.mpc_u_ub_ = np.hstack([palm_u_ub, finger_u_bound * np.ones(22)])
 
         # State bounds: obj(7) + palm(7) + fingers(22)
-        obj_pos_lb = np.array([-0.99, -0.99, 0])
-        obj_pos_ub = np.array([0.99, 0.99, 0.99])
+        obj_pos_lb = np.array([-1e7, -1e7, -1e7])
+        obj_pos_ub = np.array([1e7, 1e7, 1e7])
 
         # Palm bounds: position(3) + quaternion(4)
         if self.optimize_palm_:
             # Allow ±1cm from initial position when optimizing (conservative to prevent instability)
-            palm_pos_tolerance = 0.01
+            palm_pos_tolerance = 0.5
             palm_pos_lb = self.init_palm_qpos_[0:3] - palm_pos_tolerance
             palm_pos_ub = self.init_palm_qpos_[0:3] + palm_pos_tolerance
             palm_pos_lb[2] = max(palm_pos_lb[2], -0.05)  # keep above ground level

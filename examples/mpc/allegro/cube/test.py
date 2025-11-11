@@ -25,6 +25,10 @@ consecutive_success_time_threshold = 20
 max_rollout_length = 200
 
 trial_count = 0
+success_count = 0
+fail_count = 0
+success_total_length = 0
+fail_total_length = 0
 while trial_count < trial_num:
 
     # -------------------------------
@@ -107,6 +111,13 @@ while trial_count < trial_num:
     env.viewer_.close()
     time.sleep(0.5)
 
+    if rollout_step < max_rollout_length:
+        success_count = success_count + 1
+        success_total_length = success_total_length + rollout_step
+    else:
+        fail_count = fail_count + 1
+        fail_total_length = fail_total_length + rollout_step
+
     # -------------------------------
     #        save data
     # -------------------------------
@@ -125,3 +136,10 @@ while trial_count < trial_num:
                           save_dir=save_dir)
 
     trial_count = trial_count + 1
+
+print(f"Success count: {success_count} / {trial_num}")
+if success_count > 0:
+    print(f"Average success rollout length: {success_total_length / success_count:.2f}")
+if fail_count > 0:
+    print(f"Average fail rollout length: {fail_total_length / fail_count:.2f}")
+print(f"Overall average rollout length: {(success_total_length + fail_total_length) / trial_num:.2f}")
